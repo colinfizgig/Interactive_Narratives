@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>crackhouse sphere with three.js</title>
+	<style>
+		body { margin: 0; overflow: hidden; background-color: #000; }
+		.tm  { position: absolute; top: 10px; right: 10px; }
+    </style>	
+</head>
+<body>
+	<div id="cube">	
+	</div>	
+	
+	<!--
+	Load three.js the 3d library that powers the pano scene and rendering
+	-->
+	<script src="scripts/three.js"></script>
+	
+	<!--
+	Load Orbit controls, browser detector and alternate rendering engine plugins for three.js
+	-->
+	<script src="scripts/OrbitControls.js"></script>	
+	<script src="scripts/Detector.js"></script>
+	<script src="scripts/CanvasRenderer.js"></script>
+
+	
+	<script>
+		// this script sets up a 3d scene with a camera, the objects and materials to render.
+		// I will explain each element with a comment.  More info and examples can be found at
+		// http://threejs.org/
+		
+		// Set a variable and fallback for the rendering type based on detecting the browsers
+		// capabilities.  webgl is hardware assisted rendering supported on all modern browsers
+		// with some differences.  It is much faster and preferred to the HTML5 canvas renderer
+		// used as a fall back.
+		var renderer = Detector.webgl ? new THREE.WebGLRenderer() : new THREE.CanvasRenderer();
+		
+		// variable are set to store the window height and width for full screen scaling
+		var width  = window.innerWidth,
+			height = window.innerHeight;
+		
+		// set the renderer to full screen  If you want a smaller window set the pixels or percentages instead
+		renderer.setSize(width, height);
+		
+		// Assign the renderer to the cube div created at the beginning of the body tag.
+		var webglEl = document.getElementById('cube');
+		
+		// declare a new three.js scene.  a scene is the world or stage for your 3d elements
+		var scene = new THREE.Scene();
+
+		// You need a camera to capture the scene.  You set the Field of view and clipping distance
+		var camera = new THREE.PerspectiveCamera(100, width / height, 1, 1000);
+		
+		//position the camera in the scene
+		camera.position.x = 0.1;
+
+		
+		// This is a for loop to load 6 materials which will be applied to the 6 faces of a cube.  I use
+		// a for loop to make it easier and name the images appropriately so they will load with the loop.
+		var materials = [];
+			for (var i=0; i<6; i++) {
+			  var img = new Image();
+			  img.src = 'images/hallway.' + i + '.jpg';
+			  // a material can be a simple color or a texture or some sort of shader which simulates a surface
+			  //with code.  In this case we need textures which use the images loaded above.
+			  var tex = new THREE.Texture(img);
+			  img.tex = tex;
+			  img.onload = function() {
+				this.tex.needsUpdate = true;
+			  };
+			  // here we set each texture image into a basic material. Later we use an array of these materials as
+			  // the source for a special material which maps 6 textures to the sides of a cube.
+			  var mat = new THREE.MeshBasicMaterial({color: 0xffffff, map: tex});
+			  materials.push(mat);
+			}
+			// make a cube using basic three.js geometry primitives.  You could load an object as well but that
+			// involves more code.  See the three.js examples for ideas.
+			var cubeGeo = new THREE.BoxGeometry(120,120,120,1,1,1);
+			
+			// So I lied.  Above we did not make a cube that renders in the scene.. we made the mesh description for
+			// a primitive cube.  Below we setup the rendering object as a variable called cube with the geometry
+			// created above and the magic 6 face material created with the for loop.
+			var cube = new THREE.Mesh(cubeGeo, new THREE.MeshFaceMaterial(materials));
+
+		// more 3d trickery.  The cube we created renders for outside views only.  from the inside its invisible.
+		// dont ask.. its a rendering optimization for 3d scenes.  suffice it to say we need to flip this cube
+		// inside out so we can see it as we would walls in a room.  We do that by scaling only 1 of the coordinates
+		// to -1.  x or y works fine.  But just 1.
+		cube.scale.x = -1;
+		
+		// now add the cube to the scene.  By default our camera is at the center of the scene at 0 on the x, y and z
+		// because we flipped the cube inside out and its 120 units big and it is also at 0.  We are in the center
+		// of a big cube mapped with images from a panorama.  This method of rendering 3d panos is called a skybox.
+		// most games use it for their far off environment effect.
+		scene.add(cube);
+		
+		// set up the camera orbit controls
+		var controls = new THREE.OrbitControls(camera);
+		controls.noPan = true;
+		controls.noZoom = true; 
+		controls.autoRotate = true;
+		controls.autoRotateSpeed = 0.1;
+
+		// finally start put the webgl scene into the DOM for render.
+		webglEl.appendChild(renderer.domElement);
+
+		render();
+		// call the function below using the call above.  This function tells the engine what to do each frame of
+		// time.  in this case it updates the controls, performs any animation if we have any (we don't but it'd be
+		// cool if we did.. check out the examples!)  and renders the changes.
+		function render() {
+			controls.update();
+			requestAnimationFrame(render);
+			renderer.render(scene, camera);
+		}
+
+		// mousewheel zoom stuff.  Not necessarily needed but could be cool for zooming in for details like a
+		// magnifying glass.  By the way you could totally do a magnifying glass with a material or shader.
+		function onMouseWheel(event) {
+			event.preventDefault();
+			
+			if (event.wheelDeltaY) { // WebKit
+				camera.fov -= event.wheelDeltaY * 0.05;
+			} else if (event.wheelDelta) { 	// Opera / IE9
+				camera.fov -= event.wheelDelta * 0.05;
+			} else if (event.detail) { // Firefox
+				camera.fov += event.detail * 1.0;
+			}
+
+			camera.fov = Math.max(40, Math.min(100, camera.fov));
+			camera.updateProjectionMatrix();
+		}
+		
+		// typical responsive window resize stuff
+		function onWindowResize() {
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+
+			renderer.setSize( window.innerWidth, window.innerHeight );
+
+		}
+
+		// event listener stuff.  clicks mousewheel zooms, touch events if you want, geolocation whatever.
+		window.addEventListener( 'resize', onWindowResize, false );
+		document.addEventListener('mousewheel', onMouseWheel, false);
+		document.addEventListener('DOMMouseScroll', onMouseWheel, false);
+
+
+	</script>
+	
+</body>
+</html>
