@@ -170,7 +170,37 @@ html, body {
   transition: background var(--transition);
 }
 .inv-chip:hover { background: rgba(200,168,75,0.22); }
+.inv-chip { cursor: pointer; }
 .inv-empty { color: #5a4a28; font-style: italic; font-size: 0.7rem; }
+
+/* ── Item inspection panel ── */
+#item-panel-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9000;
+  background: rgba(10,8,4,0.75); align-items: center; justify-content: center;
+}
+#item-panel-overlay.open { display: flex; }
+#item-panel {
+  width: min(480px, 92vw); background: #171208;
+  border: 1px solid var(--border-mid); border-radius: 8px;
+  padding: 1.4rem 1.6rem; box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+}
+#item-panel-header { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.8rem; }
+#item-panel-icon { font-size: 1.7rem; }
+#item-panel-name {
+  color: var(--gold-bright); font-size: 0.85rem; letter-spacing: 0.12em;
+  text-transform: uppercase; flex: 1;
+}
+#item-panel-close {
+  background: none; border: 1px solid var(--border-mid); border-radius: 4px;
+  color: var(--sand-dim); font-size: 0.7rem; padding: 3px 9px; cursor: pointer;
+}
+#item-panel-close:hover { color: var(--gold-bright); border-color: var(--gold-dim); }
+#item-panel-body { color: var(--sand-dim); font-size: 0.85rem; line-height: 1.65; }
+#item-panel-body em { color: var(--gold-dim); }
+.item-panel-state {
+  margin-top: 0.9rem; padding: 0.5rem 0.8rem; border-left: 2px solid var(--gold-dim);
+  background: rgba(200,168,75,0.08); color: var(--gold-bright); font-size: 0.78rem;
+}
 
 /* ── Passages ── */
 #passages {
@@ -421,7 +451,93 @@ $(document).one(':passagerender', function () {
   overlay.addEventListener('click', function (e) {
     if (e.target === overlay) overlay.classList.remove('open');
   });
+
+  /* ── Build item inspection panel ── */
+  var itemOverlay = document.createElement('div');
+  itemOverlay.id = 'item-panel-overlay';
+  itemOverlay.innerHTML = [
+    '<div id="item-panel">',
+    '  <div id="item-panel-header">',
+    '    <span id="item-panel-icon"></span>',
+    '    <span id="item-panel-name"></span>',
+    '    <button id="item-panel-close">✕ Close</button>',
+    '  </div>',
+    '  <div id="item-panel-body"></div>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(itemOverlay);
+
+  document.getElementById('item-panel-close').addEventListener('click', function () {
+    itemOverlay.classList.remove('open');
+  });
+  itemOverlay.addEventListener('click', function (e) {
+    if (e.target === itemOverlay) itemOverlay.classList.remove('open');
+  });
+
+  /* Inventory chips are rebuilt every passage — delegate the clicks */
+  document.addEventListener('click', function (e) {
+    var chip = e.target.closest ? e.target.closest('.inv-chip') : null;
+    if (chip && chip.dataset.item) window.openItemPanel(chip.dataset.item);
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      itemOverlay.classList.remove('open');
+      var npc = document.getElementById('npc-chat-overlay');
+      if (npc) npc.classList.remove('open');
+    }
+  });
 });
+
+/* ── Item inspection: live descriptions from story state ── */
+window.openItemPanel = function (itemName) {
+  var v = State.variables;
+  var icon = '◆', title = itemName, body = '', state = '';
+
+  if (itemName.indexOf('Torch') === 0) {
+    icon = '🔦'; title = 'Expedition Torch';
+    body = 'A brass-cased electric torch from the expedition pack. Its beam is the only ' +
+           'honest light in Zehara — wide enough to reveal the <em>slightly raised</em> ' +
+           'pressure plates, bright enough to be seen by things that watch from the dark.';
+    var pct = v.torchBattery || 0;
+    state = pct > 0
+      ? '⚡ Battery: ~' + pct + '%. Careful navigation costs about 10% a use.'
+      : '⚠ The battery is dead. You will have to proceed by feel.';
+  }
+  else if (itemName.indexOf('Field Journal') === 0) {
+    icon = '📓'; title = 'Field Journal';
+    body = 'The handwriting is cramped and desperate, stopping mid-sentence on page ' +
+           'forty-three — the rest water-damaged. Legible fragments: ' +
+           '<em>“...the central chamber responds to—”</em> … warnings ' +
+           'about <em>pressure plates</em> in the corridor floors … and a creature: ' +
+           '<em>“ink-dark, silent, drawn to the smell of—”</em> The page tears away there.';
+    state = '🧠 Whoever wrote this got far enough to learn what the city does to visitors.';
+  }
+  else if (itemName.indexOf('Map') === 0 || itemName.indexOf('Temple Map') === 0) {
+    icon = '🗺️'; title = v.mapDeciphered ? 'Temple Map — Deciphered' : 'Temple Map — Undeciphered';
+    body = 'Four wings radiating from a central chamber, annotated in Arabic and Zeharan script. ' +
+           'Warning symbols mark certain passages.';
+    state = v.mapDeciphered
+      ? '✓ The warning glyphs are legible now. One marks the east wing altar: <em>observe — not alone.</em>'
+      : '⁇ The Zeharan glyphs resist you. Study the tablets — knowledge of the city will unlock them.';
+  }
+  else if (itemName.indexOf('Medallion') === 0) {
+    icon = '🥇'; title = 'Medallion of Accord';
+    body = 'A heavy disc of gold-veined stone, warm against your palm in a way the desert ' +
+           'air does not explain. Its face bears the same repeating glyph as the central ' +
+           'chamber. It fits somewhere. It <em>wants</em> to fit somewhere.';
+    state = '⚖ Karim called it a covenant, not a key. Perhaps ask him what that means.';
+  }
+  else {
+    body = 'You turn it over in your hands. It keeps its secrets.';
+  }
+
+  document.getElementById('item-panel-icon').textContent = icon;
+  document.getElementById('item-panel-name').textContent = title;
+  document.getElementById('item-panel-body').innerHTML =
+    '<p>' + body + '</p>' + (state ? '<div class="item-panel-state">' + state + '</div>' : '');
+  document.getElementById('item-panel-overlay').classList.add('open');
+};
 
 /* ── 2. UPDATE HUD ON EVERY PASSAGE ─────────────────────── */
 $(document).on(':passageend', function () {
@@ -448,8 +564,9 @@ $(document).on(':passageend', function () {
     inv.forEach(function (item) {
       var chip = document.createElement('span');
       chip.className = 'inv-chip';
-      var icons = { 'Torch': '🔦', 'Field Journal': '📓', 'Temple Map': '🗺️', 'Medallion of Accord': '🥇' };
-      chip.textContent = (icons[item] || '◆') + ' ' + item;
+      chip.textContent = item; /* item names carry their own icon */
+      chip.dataset.item = item;
+      chip.title = 'Inspect';
       hudInv.appendChild(chip);
     });
   }
