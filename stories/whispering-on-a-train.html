@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whispering on a Train</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0D0D0D; color: #E8E8E8; font-family: 'Georgia', serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 16px 60px; }
+  #header { width: 100%; max-width: 700px; padding: 32px 0 8px; border-bottom: 1px solid #222; margin-bottom: 32px; }
+  #title { font-size: 13px; letter-spacing: 4px; text-transform: uppercase; color: #FF2D78; }
+  #location-bar { font-size: 11px; color: #444; letter-spacing: 2px; margin-top: 6px; min-height: 16px; }
+  #passage { width: 100%; max-width: 700px; line-height: 1.85; font-size: 17px; animation: fadein 0.4s ease; }
+  @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  #passage p { margin-bottom: 1.2em; }
+  #passage em { font-style: italic; color: #C8A951; }
+  .ending-title { display:block; font-size: 13px; letter-spacing: 3px; color: #FF2D78; text-transform: uppercase; margin: 2em 0 0.5em; }
+  .ending-epilogue { display:block; color: #888; font-style: italic; font-size: 15px; }
+  #choices { width: 100%; max-width: 700px; margin-top: 2.5em; display: flex; flex-direction: column; gap: 10px; }
+  .choice { background: none; border: 1px solid #2a2a2a; color: #00E5FF; padding: 14px 20px; font-family: 'Georgia', serif; font-size: 15px; cursor: pointer; text-align: left; transition: all 0.2s; border-radius: 2px; }
+  .choice:hover { border-color: #00E5FF; background: rgba(0,229,255,0.04); color: #fff; }
+  #progress { position: fixed; bottom: 0; left: 0; right: 0; height: 2px; background: #111; }
+  #progress-bar { height: 100%; background: linear-gradient(90deg, #FF2D78, #00E5FF); width: 0%; transition: width 0.5s; }
+  #restart-btn { position: fixed; top: 20px; right: 20px; background: none; border: 1px solid #222; color: #444; padding: 6px 12px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; cursor: pointer; font-family: 'Georgia', serif; transition: all 0.2s; }
+  #restart-btn:hover { color: #FF2D78; border-color: #FF2D78; }
+</style>
+</head>
+<body>
+<div id="header">
+  <div id="title">Whispering on a Train</div>
+  <div id="location-bar"></div>
+</div>
+<div id="passage"></div>
+<div id="choices"></div>
+<div id="progress"><div id="progress-bar"></div></div>
+<button id="restart-btn" onclick="restart()">Restart</button>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let S = {}; // story state variables
+let visits = {}; // visit counts per node
+
+function v(node) { return visits[node] || 0; }
+
+// ─── Passage Definitions ──────────────────────────────────────────────────────
+// Each passage: { loc, text(S), choices(S), onEnter(S) }
+
+const P = {
+
+"Start": {
+  loc: "Seoul Station Concourse — Morning",
+  onEnter: s => { s.trustedSong=false; s.trustedBaek=false; s.jesterGift=false; s.haeunInfected=false; s.knowsMugunghwa=false; },
+  text: s => `The audition email said 9 a.m. sharp.
+
+Your phone says 7:42. The KTX-Hana departs at 8:15. Seoul Station smells like floor wax and a thousand people's breakfast.
+
+You are Yuna Seo. Twenty-six years old. Former SM trainee, former Cube trainee, former almost-idol. Your silver-black hair is perfectly styled. Your holographic bee earrings catch the light — a gift from your mother, who thought they were cute. You've never had the heart to tell her you find bees unsettling.
+
+Today is different. Today is the callback. Today, for the first time in three years, someone actually called you back.
+
+The train won't wait.`,
+  choices: s => [["Step into Seoul Station", "Concourse"]]
+},
+
+"Concourse": {
+  loc: "Seoul Station Concourse — Morning",
+  text: s => `Seoul Station is a cathedral built to commerce and motion.
+
+The vaulted ceiling blazes with holographic panels — Haeun Lim's face, twenty metres tall, pink puffer jacket, eyes like polished glass. The PRISM single playing overhead is called <em>Flutter</em>. You know every note. You trained to a song like this for two years before they let you go.
+
+The crowd moves in waves. Smart-fabric coats shift colour as their wearers walk through the billboard light — cyan, pink, gold, black. AR arrows float at knee height, directing passengers to their gates. A child reaches out to touch one and her hand passes straight through.
+
+Gate 9. Your gate. Boarding in twenty-two minutes.
+
+You are halfway across the concourse when you see him.
+
+A clown.
+
+Full suit — white and red, ruffled collar, oversized shoes that should make him comical. He stands completely still near the entrance to Gate 9, a battered yellow suitcase at his feet, covered in stickers from cities whose names you half-recognise: Incheon, Ulaanbaatar, Vladivostok, somewhere in Arabic script.
+
+No one else looks at him. Not once. A businessman walks within centimetres and doesn't blink. A school group flows around him like water around a stone.
+
+His painted smile is fixed. But his eyes — behind it, above it — are watching you specifically.
+
+You are certain of this. You don't know how.`,
+  choices: s => [["Look directly at him", "Concourse_StareBack"], ["Keep walking. You'll be late.", "Concourse_IgnoreClown"]]
+},
+
+"Concourse_StareBack": {
+  loc: "Seoul Station Concourse — Morning",
+  text: s => `You stop walking.
+
+Around you, the concourse churns. The PRISM song climbs to its bridge — Haeun's voice cracking perfectly on the high note, the way they train you to make a crack sound intentional.
+
+The clown does not move. His yellow suitcase has a sticker that says SEOUL on it, but it's older than the station you're standing in. The paper is foxed at the edges.
+
+You take three steps toward him.
+
+He tilts his head — just slightly, just enough — and for the first time his painted smile seems to belong to something real underneath it.
+
+Then a family cuts between you. Father, two kids, luggage cart. When they've passed, the clown is facing forward again, eyes ahead, as if he was never looking at you at all.
+
+An announcement chimes: <em>KTX-Hana service to Busan, now boarding at Gate 9. Final boarding in fifteen minutes.</em>`,
+  choices: s => [["Go to Gate 9", "Platform"]]
+},
+
+"Concourse_IgnoreClown": {
+  loc: "Seoul Station Concourse — Morning",
+  text: s => `You keep walking.
+
+There are a hundred things to think about: the callback sheet says they want someone who can hold an F5 for eight counts. You've been practising. Your voice teacher says you're ready. Your voice teacher has said that before.
+
+The PRISM song fades as you move toward Gate 9. Haeun's face on the billboard above the gate smiles at you — warm, practiced, and absolutely empty.
+
+An announcement chimes: <em>KTX-Hana service to Busan, now boarding at Gate 9. Final boarding in fifteen minutes.</em>
+
+You don't look back. You don't see the clown pick up his yellow suitcase and walk — not toward an exit, not toward another gate, but toward the boarding queue directly behind you.`,
+  choices: s => [["Go to Gate 9", "Platform"]]
+},
+
+"Platform": {
+  loc: "Seoul Station Boarding Platform — Morning",
+  text: s => `The platform is the last honest place.
+
+Out here, the ceiling is lower, the air is real — diesel and morning damp and a thin cold wind that comes from somewhere north of the city. The KTX-Hana sits along the platform like a white spine, its nose tapered to a point that seems almost aggressive. Doors open at intervals down its length, passengers filtering in.
+
+You find your car. Car 1. You glance at your ticket on your phone — Seat 14A, window.
+
+At the far end of the platform, a man boards last. Fifties, compact, civilian clothes that don't quite sit right on his frame. There's something on his wrist — a cuff, connecting to a titanium briefcase that gleams under the platform lights. He holds a newspaper under his other arm. He doesn't look at anyone.
+
+You watch him until he disappears through the door of Car 3.
+
+Something about him makes you feel the same way the clown did.
+
+You look for the clown. He is behind you — at the pillar, yellow suitcase at his feet, facing the train. Not you, this time. The train.
+
+His lips are moving. You can't hear what he's saying.
+
+The boarding whistle sounds. Final call.`,
+  choices: s => [["Board the train", "Boarding"]]
+},
+
+"Boarding": {
+  loc: "Car 1 — Economy Class — Moving",
+  text: s => v("Boarding") === 0 ? `Seat 14A. Window. The fabric is navy blue and smells faintly of the person who sat here before you.
+
+The train moves without announcement — a smooth, absolute acceleration that presses you gently back into the seat. Outside, Seoul dissolves: apartment blocks, rooftop gardens, a billboard for a pharmaceutical company whose logo is a flower you don't recognise. Then suburbs. Then green.
+
+The screens above the aisle cycle through music videos. PRISM. Then a group called VENTURE. Then PRISM again — <em>Flutter</em>, the same song from the station. Haeun's face, on a smaller screen now, somehow more human for it.
+
+The woman next to you is already asleep. The child across the aisle is watching something on a tablet with the sound off, mouth moving along with it.
+
+Everything is ordinary. Everything is fine.
+
+Except: two cars ahead — you can see it through the sliding glass partition — a man in civilian clothes is not reading the newspaper open in his hands. He has not turned a page since the train left the platform. His briefcase sits on the floor between his feet, handcuffed to his wrist, and every few seconds his eyes move to it, and away again.
+
+You have ninety minutes to Busan.` : `You come back to your seat.
+
+The woman next to you is still asleep. The child across the aisle has moved on to a new video. Everything in Car 1 performs normalcy with commitment.
+
+${s.trustedBaek ? `Baek's warning sits in your chest like a stone: <em>find me first, before anyone in a uniform.</em> You don't know what unusual looks like yet on this train. You're beginning to think it might look like everything.` : s.knowsMugunghwa ? `Dr. Song's words keep circling: a breach, a colony, forty minutes. You watch the vent above your seat and try to decide whether the faint vibration you feel is the wheels on the track or something smaller, and faster, and closer.` : `Two cars ahead, the man still hasn't turned his newspaper page.`}
+
+You have ninety minutes to Busan. Or you did. Some of them are gone now.`,
+  choices: s => v("Boarding") === 0
+    ? [["Close your eyes and rehearse your audition piece", "Boarding_Rest"], ["Get up and walk toward Car 3", "Car3_Approach"]]
+    : [["Close your eyes and try to think", "Boarding_Rest"], ["Go back to Car 3", "Car3_Approach"]]
+},
+
+"Boarding_Rest": {
+  loc: "Car 1 — Economy Class — Moving",
+  text: s => `You press your forehead against the window. The glass is cool. Outside, the world blurs into green and grey.
+
+You run through the audition piece in your head — the breath placements, the dynamics, the moment in the second verse where you're supposed to let the voice fray just slightly, controlled damage, which is the hardest thing to learn and the most important. Your old vocal coach called it <em>jeong</em> — the ache that makes a listener lean in.
+
+You almost drift off.
+
+That's when you feel it.
+
+Not hear it — feel it. A vibration that doesn't match the train's rhythm. Finer than the wheels on the track. Closer. Like something very small, moving very fast, inside the walls.
+
+You open your eyes.
+
+The overhead screen has gone dark. Not off — dark, like something passed across it from the inside.
+
+The child across the aisle has stopped moving his mouth. He's staring at the vent above his seat. His tablet has slid off his lap and he hasn't noticed.`,
+  choices: s => [["Get up. Go to the vestibule.", "FirstContact_Start"]]
+},
+
+"Car3_Approach": {
+  loc: "Vestibule Corridor — Moving",
+  text: s => `The vestibule between Car 1 and Car 3 hits you like a fist — the full noise of the train at speed, the clatter and roar that the sealed cars suppress. You stand between the sliding doors and feel the train move through you.
+
+Car 3 is quieter than Car 1. Dimmer. The passengers here have paid for the silence and the extra space and they sit in it like people who have earned their stillness.
+
+You see him immediately. Row 7, window. The newspaper still open. Still unread.
+
+He looks up before you're halfway down the aisle. His eyes find you with the efficiency of someone who never stops scanning a room. They are not unkind. They are not warm.
+
+He waits for you to reach him.`,
+  choices: s => [["Sit in the empty seat across the aisle", "Car3_SitNear"], ["Keep walking. Go to the bathroom.", "Bathroom_FirstVisit"]]
+},
+
+"Car3_SitNear": {
+  loc: "Car 3 — Quiet Car — Moving",
+  text: s => `You take the seat across the aisle. 7B. The charcoal upholstery is softer than Car 1's.
+
+He lets you settle. Then, without looking up from his newspaper: "You're in the wrong car."
+
+His Korean is precise. Formal register — not rude, but the kind of formal that leaves no room for negotiation.
+
+"My ticket is for Car 1," you say.
+
+"Then you are in the wrong car."
+
+He turns a page. The first page he's turned since Seoul.
+
+Two rows behind him, a woman in wire-frame glasses is watching both of you over the top of her phone. She looks away the moment you glance at her, but not quickly enough.
+
+Across the aisle from the man, a girl in a pink puffer jacket is asleep against the window. Her earbuds are in. Her face is familiar in the way famous faces are familiar — like a song you can't quite name.
+
+The briefcase sits between the man's feet. You can hear something from it that you think, at first, is the train.
+
+It is not the train.`,
+  choices: s => [["Ask him what's in the briefcase", "Car3_AskBriefcase"], ["Go back to your seat", "Boarding"]]
+},
+
+"Car3_AskBriefcase": {
+  loc: "Car 3 — Quiet Car — Moving",
+  text: s => `"What's in the briefcase?"
+
+He doesn't answer immediately. He folds the newspaper — precisely, along its original creases — and sets it on his knee.
+
+"Medical equipment," he says. "Sensitive to impact."
+
+"Is that why it's handcuffed to you?"
+
+"Yes."
+
+The woman in wire-frame glasses has not looked back at her phone. She is listening. You can tell from the stillness of her shoulders.
+
+"What kind of medical equipment?" you ask.
+
+For the first time, he looks at you directly. His eyes are the kind of tired that doesn't come from lack of sleep.
+
+"The kind that is not your concern," he says. "I recommend returning to your seat. The remainder of the journey is short."
+
+The briefcase emits the sound again — not a buzz, not a hum, something in between, something that sits just at the edge of what should be audible. It makes your bee earrings vibrate.`,
+  choices: s => [["Go back to your seat", "Boarding"], ["Push harder. Ask about the cuff.", "Car3_PushBaek"]]
+},
+
+"Car3_PushBaek": {
+  loc: "Car 3 — Quiet Car — Moving",
+  onEnter: s => { s.trustedBaek = true; },
+  text: s => `"Medical equipment doesn't get handcuffed to people," you say. "That's a military restraint cuff."
+
+He goes very still.
+
+"You've seen one before?" His voice is careful now. A different register.
+
+"My uncle served. I know what they look like."
+
+A long pause. The train takes a curve and everyone leans, slightly, without knowing it.
+
+"You should go back to your seat," he says. "And if anything unusual happens — anything at all — you should find me first. Before you find anyone in a uniform. Do you understand?"
+
+You don't. But something in the way he says it makes you believe he means it.`,
+  choices: s => [["Go back to your seat", "Boarding"]]
+},
+
+"Bathroom_FirstVisit": {
+  loc: "Train Bathroom — Moving",
+  text: s => `The bathroom is the loudest room on the train.
+
+You lock the door. In here there's no insulation — the wheels are right below you, the track joins clatter through the floor, the walls vibrate with a frequency that settles in your back teeth. You grip the steel sink and look at yourself in the mirror.
+
+Perfect makeup. Dark circles underneath. Holographic bee earrings catching the fluorescent light.
+
+You run cold water. Cup your hands. Breathe.
+
+That's when you see it.
+
+On the edge of the sink. Smaller than a grain of rice. Perfectly formed — hexagonal body, six articulated legs, two wings folded flat against its back. A bee. A bee made of something that is not metal and not plastic and not anything you have a word for.
+
+It is not moving.
+
+You lean closer. One of the wings is fractured along its leading edge. One antenna is bent at a wrong angle.
+
+It looks, impossibly, like it died trying to get somewhere.
+
+Your earrings buzz — just once, just briefly — like a frequency response.`,
+  choices: s => [["Pick it up", "Bathroom_PickUpBee"], ["Leave it. Get out of here.", "FirstContact_Start"]]
+},
+
+"Bathroom_PickUpBee": {
+  loc: "Train Bathroom — Moving",
+  onEnter: s => { s.knowsMugunghwa = true; },
+  text: s => `You pick it up on the tip of your finger.
+
+It weighs almost nothing. Less than nothing — like picking up a shadow.
+
+Up close, the construction is extraordinary. The facets of the compound eyes are each smaller than a pixel on your phone screen. The legs are jointed in too many places. The wings, damaged as they are, have a lattice structure that shifts colour as you tilt it — gold, then copper, then a blue-black that matches nothing in nature.
+
+The ventilation grate above the toilet rattles.
+
+You close your fist around the nanobot.
+
+The door handle moves — someone trying it from outside. You unlock and open.
+
+A woman in wire-frame glasses stands in the corridor. She looks at your closed fist. Then at your face.
+
+"You found one," she says. Not a question. "Don't put it down. Don't lose it." She glances toward Car 3. "We need to talk. Not here."
+
+She steps back to let you out.`,
+  choices: s => [["Follow her", "DrSong_FirstMeeting"], ["Push past her. Go back to your seat.", "FirstContact_Start"]]
+},
+
+"DrSong_FirstMeeting": {
+  loc: "Vestibule Corridor — Moving",
+  onEnter: s => { s.trustedSong = true; },
+  text: s => `Her name, she tells you, is Dr. Mirae Song. She tells you this the way people tell you things they're not sure they should.
+
+You're standing in the vestibule between Car 3 and the rear section, the noise of the train surrounding you like a room with no ceiling. She speaks close to your ear so she doesn't have to shout.
+
+"The man in Row 7. The briefcase. You noticed him."
+
+"Everyone should have noticed him," you say.
+
+"They didn't. That's how it was designed." She touches the bridge of her glasses. Her hands don't stop moving — to her phone, to her collar, back. "What you found in the bathroom is part of a classified military biotech programme. Project MUGUNGHWA. I designed the containment. The containment has — there's been a breach. A small one. So far."
+
+"So far," you repeat.
+
+"The colony is autonomous once dispersed. They follow a hive logic. If they reach the ventilation mainline—" She stops. Recalibrates. "We have maybe forty minutes before this becomes a problem that can't be managed quietly."
+
+"What do you need from me?"
+
+She looks at your closed fist. "I need you to trust me. And I need you to get to the cargo vestibule at the rear of the train. There's a secondary containment unit. I can't get there alone — Baek is watching me."`,
+  choices: s => [["Agree to help her", "Vestibule_ToJester"], ["Refuse. Go find Baek first.", "Car3_FindBaek"]]
+},
+
+"Vestibule_ToJester": {
+  loc: "Vestibule Corridor — Moving",
+  onEnter: s => { s.jesterGift = true; },
+  text: s => `You step into the vestibule between the cars.
+
+The noise hits you — the full, unfiltered roar of three hundred kilometres per hour. The walls rattle. The floor shudders under your feet.
+
+And there, in the narrow steel corridor, leaning against the far door with his yellow suitcase between his oversized shoes, is the clown from Seoul Station.
+
+He should not be here. There is no way he boarded this train. You watched the platform. You watched the doors close.
+
+He watches you take all of this in. His painted smile hasn't moved but something in his eyes has — a warmth that the paint doesn't allow for, arriving anyway.
+
+He reaches into the breast pocket of his white-and-red suit and holds something out to you, pinched between two fingers.
+
+A small glass vial. Inside it — you have to lean forward to see — something shifts like smoke that can't decide which direction to drift.
+
+His lips move. The train is too loud. You lean closer.
+
+He says, very clearly, directly into your ear:
+
+<em>"The queen always survives the hive. But only if she decides to."</em>
+
+He presses the vial into your palm and closes your fingers around it.
+
+Then he steps back, tilts his head — that same tilt from the concourse — and the rear door slides open behind him.`,
+  choices: s => [["He's gone. Look at the vial.", "Vestibule_AfterJester"]]
+},
+
+"Vestibule_AfterJester": {
+  loc: "Vestibule Corridor — Moving",
+  text: s => `The vial is warm. Warmer than it should be from just being in a pocket.
+
+The smoke inside it — not smoke, you don't have a better word — moves toward your fingers through the glass. Responsive. Aware.
+
+You don't open it.
+
+From Car 1, a scream. Short, sharp, cut off — and then a chorus of alarmed voices.
+
+The overhead lights in the vestibule flicker.
+
+From Car 3, the sound of a chair scraping back. Baek. Moving.
+
+And from the vent above you, a sound like static tuned to the exact frequency of anxiety — a fine, grainy oscillation that you feel more in your chest than hear with your ears.
+
+They're in the walls.
+
+You have the vial. You have a dead bee in your other fist. You have whatever Baek told you, and whatever Dr. Song told you, and you have twenty-three minutes until Busan.
+
+The cargo vestibule is at the rear of the train. The door the Jester stepped through leads there.`,
+  choices: s => [["Go to the cargo vestibule", "Cargo_Enter"]]
+},
+
+"FirstContact_Start": {
+  loc: "Car 1 — Economy Class — Crisis",
+  text: s => `The overhead lights in Car 1 go out.
+
+Not a flicker — gone. The emergency strips kick in a second later, bathing everything in dim amber. Someone screams. Then two people. Then the kind of group noise that happens when individual fear discovers it isn't alone.
+
+${s.knowsMugunghwa || s.jesterGift ? `You already know what this is. Or close enough.` : `You don't know what this is. Nobody in this car does.`}
+
+The child who was watching his tablet is standing on his seat, pointing at the vent above him. The vent cover is on the floor. And from the gap in the ceiling — movement. Not one thing. Many things. A shifting, living darkness that catches the amber emergency light and throws it back as a thousand tiny refractions.
+
+The sound is everywhere now — not a buzz, not a hum, something that sits between language and static, fine as interference on a signal you were never meant to receive.
+
+A man in the aisle swats at the air and recoils. "Something touched me—"
+
+The woman next to him is already at the far door, hammering the release panel.
+
+The train does not slow down. The train does not care.
+
+${s.jesterGift ? `You have the vial in one hand — the Jester's gift, warm against your palm. The cargo vestibule is behind you, through one more door. Whatever is in these walls came from there.` : `The cargo vestibule is behind you, through one more door. Something tells you that's where this started.`}`,
+  choices: s => [["Push through to the cargo vestibule", "Cargo_Enter"], ["Try to calm the passengers first", "FirstContact_CalmCrowd"]]
+},
+
+"FirstContact_CalmCrowd": {
+  loc: "Car 1 — Economy Class — Crisis",
+  text: s => `You put yourself in the middle of the aisle.
+
+"Hey." Your voice comes out steady. Trainee muscle memory — you spent three years learning how to project to the back of a room. "Everyone sit down. Sit down right now."
+
+The screaming doesn't stop but it wavers. A few people look at you. You are small and silver-haired and you are the only person in this car not panicking, which makes you briefly, accidentally, look like someone in charge.
+
+"It's a technical fault with the ventilation," you say. You have no idea if this is true. "The train is not stopping. Do not open the windows — that makes the pressure worse. Sit. Down."
+
+About half of them do.
+
+The child with the tablet looks at you. His face is very calm for someone his age. He holds up his tablet. On the screen: the word MUGUNGHWA, in hangul and roman text both, in a search result from three years ago that has since been removed.
+
+He saw it in the vent. He read it off the side of something inside the vent.
+
+"You should go to the back of the train," he says, very quietly. "The clown told me to tell you that."`,
+  choices: s => [["Go to the cargo vestibule", "Cargo_Enter"]]
+},
+
+"Car3_FindBaek": {
+  loc: "Car 3 — Quiet Car — Crisis",
+  text: s => `You push back through the vestibule into Car 3.
+
+Baek is already standing. He has one hand braced against the overhead rack, the briefcase dangling from his wrist like an anchor. His newspaper is on the floor. His eyes are on the vent above his row, where a hairline of movement traces the seam between cover and ceiling.
+
+He sees you before you reach him.
+
+"You need to leave this car," he says.
+
+${s.trustedBaek ? `"You told me to find you first," you say. "Before anyone in a uniform. Well."
+
+Something shifts in his expression — not quite relief, but close. He was hoping you'd remember.` : `"Dr. Song told me about MUGUNGHWA," you say.
+
+His jaw tightens. Just slightly. Just enough.
+
+"Song is on this train." Not a question.
+
+"She wants to get to the cargo vestibule. The secondary containment."
+
+"Song designed the primary containment." His voice is very flat. "Ask yourself why she's here in person to watch it fail."`}
+
+The vent above him drops its cover. A sound pours out — thin, sibilant, a cascade of tiny wings too numerous to count — and the darkness that follows it catches the amber light and moves with intention.
+
+Baek doesn't flinch. He looks at you.
+
+"Cargo vestibule. Now. I'll be behind you."
+
+${s.trustedBaek ? `He already has the matte-black cylinder in his hand — the one he gave you earlier. He checks it once, pockets it. "Let's go."` : `He pulls something from his breast pocket — a small matte-black cylinder with a single button — and holds it out. "Take this. Don't use it until I tell you."`}`,
+  choices: s => [["Run to the cargo vestibule", "Cargo_Enter"]]
+},
+
+"Cargo_Enter": {
+  loc: "Cargo Vestibule — Red Light",
+  onEnter: s => { s.haeunInfected = true; },
+  text: s => `The cargo vestibule is bathed in red.
+
+Emergency strips only — the overhead light is out, either by design or by something that chewed through the wiring. Everything is the colour of the inside of a closed fist.
+
+The military case is here. ${s.trustedBaek || s.knowsMugunghwa ? `Larger than the titanium case Baek carried handcuffed to his wrist.` : `A full transport container, composite shell, magnetic latches — this is what the train was really carrying.`} One latch is open. The seal around the lid has a crack running its full length, black at the edges, like something burned its way out from inside.
+
+In the far corner, the swarm is visible.
+
+A column of darkness — not a cloud, not a mass, something more organised than that, rotating slowly on an internal axis, about the size of a standing person. The individual bees catch the red light and lose it again, each one winking in and out of visibility as they orbit. The sound they make is not a sound. It is a sensation. It settles in the back of your skull and hums there like a name you can't remember.
+
+${s.trustedBaek || s.knowsMugunghwa ? `The girl from Car 3 — the one in the pink puffer jacket, earbuds always in, the idol face you recognised but couldn't place. She's facing the swarm. Her manager is nowhere.` : `A girl in a pink puffer jacket stands facing the swarm. Her earbuds are in. Her face is famous in that specific way — a face you've seen on billboards, on phone screens, somewhere. She is completely alone.`}
+
+She is swaying — slightly, slowly — in time with something only she can hear. Her hands are trembling.
+
+${s.knowsMugunghwa || s.trustedBaek ? `Dr. Song is here too, back against the wall, eyes moving between the girl and you. Song. The scientist. The one who designed whatever is in that case.` : `A woman in wire-frame glasses is here too, back against the wall. You don't know her. She looks at you like she was expecting you.`}`,
+  choices: s => [["Go to the girl in the pink jacket", "Cargo_ToHaeun"], ["Go to the containment case", "Cargo_ToCase"]]
+},
+
+"Cargo_ToHaeun": {
+  loc: "Cargo Vestibule — Red Light",
+  text: s => `You cross the red dark to the girl in the pink jacket.
+
+Up close, her trembling is worse than it looked. Her jaw is set, eyes fixed on the swarm, and the earbuds are playing something — you can hear the tinny leak of it, a slow minor-key song. She's using it to stay calm. She's using it like a lifeline.
+
+${s.trustedBaek || s.knowsMugunghwa ? `"Haeun." You put a hand on her arm. The name comes to you finally — Haeun Lim, PRISM. Her face is on every billboard in Seoul.` : `"Hey." You put a hand on her arm. "Hey — look at me."`}
+
+She looks at you. Her eyes are clear. Frightened, yes — but clear. Not lost.
+
+"They're in me," she says. Very matter-of-fact. "I felt them go in. Through the ear. While I was asleep." She swallows. "They haven't done anything yet. I think — I think they're waiting."
+
+"Waiting for what?"
+
+"I don't know. But they respond to the music." She taps the earbud. "When I play this, they slow down. When I stopped — even for a second — they started moving toward my eyes."
+
+${s.knowsMugunghwa ? `The woman in wire-frame glasses — Dr. Song — speaks from the wall: "The colony uses sound frequencies for navigation. Music in the 60–80 BPM range disrupts their pathfinding. She's inadvertently created a localised suppression field." A pause. "It won't hold indefinitely."` : `The woman in wire-frame glasses speaks from the wall: "The colony uses sound frequencies for navigation. Music in the 60–80 BPM range disrupts their pathfinding. She's inadvertently created a localised suppression field." She says it like she designed it, which, you are beginning to suspect, she did. "It won't hold indefinitely."`}
+
+${s.jesterGift ? `You look at the vial in your hand. The smoke inside it pulses — once — toward the girl. Responsive. Aware.
+
+Her famous face, up close, is twenty years old and terrified. "Are you going to help me?" she asks.` : `Her famous face, up close, is twenty years old and terrified. "Are you going to help me?" she asks.`}`,
+  choices: s => s.jesterGift
+    ? [["Use the Jester's vial", "Ending_Sacrifice_Setup"], ["Save the vial. Go to the containment case.", "Cargo_ToCase"]]
+    : [["Go to the containment case. You need more information.", "Cargo_ToCase"]]
+},
+
+"Cargo_ToCase": {
+  loc: "Cargo Vestibule — Red Light",
+  text: s => `The containment case is open four centimetres. That's all it took.
+
+You crouch beside it. Inside: a lattice of hexagonal chambers, each one the size of a thumbnail, each one connected to the next by filaments thinner than hair. Most of the chambers are empty — their occupants distributed through the vents, the walls, the girl's inner ear. But at the centre of the lattice, one chamber is still sealed.
+
+The queen cell.
+
+${s.knowsMugunghwa ? `Dr. Song crouches beside you — she was already moving toward the case before you reached it.` : `The woman in wire-frame glasses crouches beside you. She moves with the certainty of someone who has spent years learning every centimetre of what's inside.`}
+
+Her hands have finally stopped moving. She looks at the cell with an expression you recognise — the specific grief of someone who built something they loved and watched it become a weapon.
+
+"If the queen disperses, there's no recall," she says quietly. "The hive loses coherence. They revert to base programming. Seek heat. Replicate. There won't be a Busan to arrive at."
+
+"And if she doesn't?"
+
+"The colony is still controllable. From the queen. By whoever holds the right signal."
+
+${s.knowsMugunghwa ? `She looks at you. "The vial the Jester gave you — if you have it — contains a synthetic pheromone override. A kill-switch. He stole it from my lab two years ago. I assumed he destroyed it." Her voice is perfectly level. "I would like to know who he is."` : s.jesterGift ? `She looks at what's in your hand — the vial. Her expression changes. "Where did you get that." Not a question. "That's a synthetic pheromone override. A kill-switch. It was stolen from my lab two years ago." Her voice is perfectly level. "Who gave it to you?"` : `She looks at you. "There is a synthetic override — a kill-switch. I designed it. It was stolen from my lab two years ago. I don't know where it is now." She pauses. "I came on this train hoping to find it. Or the person who took it."`}
+
+${s.trustedBaek ? `Baek enters the cargo vestibule behind you. He takes in the scene in one long sweep. He's seen worse. You can tell.
+"Song," he says. "Step away from the case."` : `A man enters the cargo vestibule behind you. Fifties, compact. The titanium briefcase still cuffed to his wrist. He takes in the scene with the efficiency of someone who has been expecting exactly this.
+"Song," he says — he knows her, then. "Step away from the case."`}
+
+Song does not move.`,
+  choices: s => {
+    const c = [];
+    if (s.trustedBaek && s.trustedSong && s.jesterGift && s.knowsMugunghwa)
+      c.push(["Something is wrong. Look closer at your earrings.", "Arrival_Fourth"]);
+    c.push(["Side with Dr. Song — let her operate the case", "Ending_Containment_Setup"]);
+    c.push(["Side with the man — keep Song away from the case", "Ending_Exposure_Setup"]);
+    if (s.jesterGift) c.push(["Use the vial now — on the queen cell directly", "Ending_Sacrifice_Setup"]);
+    return c;
+  }
+},
+
+"Ending_Containment_Setup": {
+  loc: "Cargo Vestibule — The Containment",
+  text: s => `You step aside.
+
+Song moves to the case with the efficiency of someone returning to a workbench. Her hands — those restless, never-still hands — go quiet the moment they touch the lattice. She knows every filament. She built every filament.
+
+${s.trustedBaek ? `Baek watches. He doesn't move to stop her.` : `The man with the briefcase watches. He doesn't move to stop her.`} Something in his posture has shifted — not surrender, but recognition. He's seen enough to know she's right.
+
+The girl in the pink jacket keeps the music playing. The swarm in the corner slows its rotation. The individual bees orbit wider, slower, losing coherence the way a crowd loses energy when the performer leaves the stage.
+
+Song works for four minutes and eleven seconds. You count.
+
+Then: a tone from the case — clean, single, like a tuning fork — and the swarm collapses. Not falls. Collapses inward, each bee folding its wings and dropping, a rain of near-invisible bodies across the cargo floor.
+
+The red light hums on.
+
+${s.trustedBaek ? `Baek exhales.` : `The man exhales.`} "How many got into the ventilation?"
+
+"Enough to count," Song says. "Not enough to matter. The queen cell is intact." She closes the latch. "This time."
+
+The girl pulls out her earbuds. Her hands have stopped trembling. She looks at you.
+
+"You stayed," she says, like that means something specific.
+
+It does.
+
+The train begins to slow. Busan, four minutes out.`,
+  choices: s => [["Arrive at Busan", "Arrival_Containment"]]
+},
+
+"Ending_Exposure_Setup": {
+  loc: "Cargo Vestibule — The Exposure",
+  text: s => `"Song," you say. "Back up."
+
+She looks at you. Something moves behind her wire-frame glasses — surprise, recalculation, the particular expression of someone who bet on the wrong card.
+
+She backs up.
+
+${s.trustedBaek ? `Baek takes her place at the case.` : `The man with the briefcase takes her place at the case. His name, you will learn later, is Baek.`}
+
+His hands are large and careful and he handles the lattice like he's defusing something, which he is.
+
+"I can't close it," he says after a moment. "The queen cell integrity is compromised. If I seal it now, the pressure differential will rupture it and we'll have a full dispersal event regardless." He looks at Song. "You knew this."
+
+"I knew it was possible," she says.
+
+"You came on this train to ensure it."
+
+Song says nothing. Which is, in its own way, everything.
+
+The girl in the pink jacket has sunk to the floor, back against the wall, earbuds still in. The music still playing. The bees inside her still listening.
+
+Baek straightens up. "I need to use the emergency line to contact the base. The passengers are going to see the containment team when we arrive." He looks at you. "You can't unknow what you know. That's the problem with witnesses."
+
+He doesn't say it as a threat. He says it as a fact, which is worse.
+
+"What happens to the passengers?" you ask.
+
+"That's above my clearance level," he says. "And yours."
+
+The train begins to slow. Busan, four minutes out.`,
+  choices: s => [["Arrive at Busan", "Arrival_Exposure"]]
+},
+
+"Ending_Sacrifice_Setup": {
+  loc: "Cargo Vestibule — The Override",
+  text: s => `You open the vial.
+
+Not toward the girl. Not toward the case. You tip it toward your own open palm.
+
+The smoke — not smoke, the thing without a name — settles on your skin like a question. Cool at first. Then warm. Then something that isn't temperature at all.
+
+Everyone in the cargo vestibule goes still.
+
+The swarm in the corner stops rotating.
+
+You feel them — all of them, simultaneously, a sensation like standing in a field when every blade of grass turns toward you at once. Not threatening. Attentive. Waiting.
+
+The woman in wire-frame glasses speaks very quietly: "What did you just do."
+
+You understand the Jester's riddle now. <em>"The queen always survives the hive. But only if she decides to."</em>
+
+You were never the witness. You were never the bystander.
+
+You are the override.
+
+"Keep playing the music," you say. Your voice comes out different — resonant, layered, like a chord instead of a note. "Loud as it goes."
+
+The girl cranks her earbuds to maximum. PRISM floods the cargo vestibule through the tiny speakers, improbably large for their size, and you close your eyes and you reach — inward, downward, into the part of yourself that is now also the swarm — and you <em>pull</em>.
+
+The train begins to slow. Busan, three minutes out.`,
+  choices: s => [["Arrive at Busan", "Arrival_Sacrifice"]]
+},
+
+"Arrival_Containment": {
+  loc: "Busan Station Platform 4",
+  text: s => `Busan Station Platform 4.
+
+The military cordon is already in place — barriers, hazmat personnel, two black vehicles with no markings parked at the platform's far end. Someone planned for this. Someone always planned for this.
+
+Passengers stream off the train into organised chaos. A loudspeaker gives instructions in Korean, then English, then Japanese. Calm voice. Rehearsed.
+
+You step off last.
+
+On the bench at the centre of the platform: the yellow suitcase. Covered in stickers. Unattended.
+
+You sit beside it. You don't open it.
+
+A hazmat official approaches with a tablet. Before he can speak, you say: "Car 3, cargo vestibule. ${s.knowsMugunghwa ? `A Dr. Song and a man named Baek are securing a containment unit.` : `A woman in wire-frame glasses and a man with a briefcase are securing a containment unit.`} They need extraction, not arrest."
+
+He blinks. He makes a note.
+
+You look at ${s.trustedBaek || s.knowsMugunghwa ? `Haeun,` : `the girl in the pink jacket,`} being guided gently but firmly toward the medical tent. She looks back at you over her shoulder and mouths something. You think it's <em>thank you</em> but her lip gloss makes it hard to tell.
+
+You look for the clown.
+
+The yellow suitcase beside you opens. Just a crack. Just enough for a folded piece of paper to slide out from between the latches.
+
+You unfold it.
+
+It says: <em>You chose the train over the station. Good. Come find me when you're ready to know why you were on it.</em>
+
+Below that, an address. In Busan. Not far from here.
+
+Your audition was this morning.
+
+You think you may have already given the most important performance of your life.
+
+<span class="ending-title">Ending One: Containment</span>
+<span class="ending-epilogue">The swarm was stopped. The girl recovered. Project MUGUNGHWA was buried again — deeper this time. You were debriefed for six hours and released. You didn't make the callback. The address is still in your pocket.</span>`,
+  choices: s => [["Play again", "Start"]]
+},
+
+"Arrival_Exposure": {
+  loc: "Busan Station — The Quarantine",
+  text: s => `Busan Station Platform 4.
+
+It looks like every disaster drill you've ever seen filmed and never believed was real: the barriers, the suits, the organised distance that institutions maintain between themselves and what they've caused.
+
+The passengers from the train are being separated. Not by hazmat risk. By something else — by what they saw, by where they were sitting, by whether they looked into the vents.
+
+You understand, as they guide you toward the tent, that the separation is permanent.
+
+The yellow suitcase is on the bench. You stop walking. The hazmat official beside you pauses, professionally.
+
+"That suitcase," you say. "Who does it belong to?"
+
+He looks at it. "It was here when we arrived."
+
+Inside the tent, a man in a suit — not a hazmat suit, a civilian suit, which is somehow worse — has a tablet with your name already on it. He knows your name. He knows your training history. He knows you were in Car 3.
+
+He asks you what you saw.
+
+You tell him everything. Every word. ${s.knowsMugunghwa ? `Baek. Song. MUGUNGHWA. The swarm. The queen cell. All of it.` : `The man with the briefcase. The woman in wire-frame glasses. The case with the crack in the seal. The swarm. The girl with the earbuds. All of it.`}
+
+He nods throughout. He types. He thanks you.
+
+Three days later, a journalist receives an anonymous package containing everything you just said, transcribed and verified. Two weeks after that, the name MUGUNGHWA appears on the front of every newspaper in Korea.
+
+You didn't send the package. You were still in the tent when it was sent.
+
+Through the tent flap, just before it closes, you see the painted smile. Just for a moment. And a hand, in a white glove, making the smallest possible gesture — a bow.
+
+<span class="ending-title">Ending Two: Exposure</span>
+<span class="ending-epilogue">Project MUGUNGHWA became public. The military lost containment of the story before they lost containment of the swarm. Some things cannot be buried twice. You were never charged. Neither was the Jester. The girl's label released a statement saying she had taken personal leave. Her next single went to number one.</span>`,
+  choices: s => [["Play again", "Start"]]
+},
+
+"Arrival_Sacrifice": {
+  loc: "Busan Station Platform 4",
+  text: s => `Busan Station Platform 4.
+
+You walk off the train last.
+
+The swarm walks with you. Inside you, around you — not visible, not yet, a held breath, every bee in the colony suspended on your signal like an orchestra waiting for the downbeat.
+
+${s.trustedBaek || s.knowsMugunghwa ? `Haeun is safe.` : `The girl in the pink jacket is safe.`} You felt them leave her the moment you called. They came to you with the certainty of water finding level.
+
+The hazmat team looks at their instruments and looks at each other. The readings are wrong. The readings are impossible. They were told to expect a dispersal event and instead they are reading one coherent mass, localised, self-contained, stationary.
+
+You are the stationary.
+
+${s.trustedBaek ? `Baek comes off the train behind you. He stands beside you. He doesn't touch you. He says, very quietly: "Song was right about one thing. The pheromone override was designed for a human host. We didn't know that. She did."` : `The man with the briefcase comes off the train behind you. He stands beside you. He doesn't touch you. He says, very quietly: "The scientist was right about one thing. The override was designed for a human host. We didn't know that. She did."`}
+
+"Is it permanent?" you ask.
+
+"I don't know."
+
+You sit on the bench beside the yellow suitcase. The cordon is reforming around you specifically now. You don't move. The bees inside you are very still, very warm, very present — like a second pulse.
+
+The suitcase opens. A note.
+
+<em>You decided. That was always the question. Not whether you could carry them — whether you would choose to. I'm sorry it had to be you. I'll find you when they let you out.</em>
+
+You fold the note. You put it in your hoodie pocket, next to the dead bee you've been carrying since the bathroom.
+
+The first hazmat official reaches you.
+
+You look up at him and say: "I need to speak to whoever is in charge. I have something that belongs to the military and I'd like to negotiate its return."
+
+<span class="ending-title">Ending Three: Sacrifice</span>
+<span class="ending-epilogue">You became the queen. The bees never dispersed. The military spent nine months trying to understand what you were and three months deciding whether to be afraid of it. On the day they finally let you leave the facility, a yellow suitcase was waiting outside the gate. There was no one with it. There never was.</span>`,
+  choices: s => [["Play again", "Start"]]
+},
+
+"Arrival_Fourth": {
+  loc: "Busan Station — The Truth",
+  text: s => `You stop at the bench.
+
+The yellow suitcase is open. Not a crack — fully open. And inside it is not the clutter of a traveller. Inside it is a single photograph, face up.
+
+You are in it.
+
+Not today — younger. Seven, maybe eight years old. Standing in a courtyard in a school uniform, squinting at the camera. You don't remember this photograph being taken. You don't remember this courtyard.
+
+On the back, in handwriting you don't recognise:
+
+<em>Project MUGUNGHWA, Phase One. Subject 001. Yuna Seo. Colony resonance confirmed: age 7.</em>
+
+The world reorganises itself.
+
+Your earrings. The bee earrings your mother gave you, that you never found unsettling until today — you reach up and pull one free. Hold it to the light.
+
+It is not a decoration. It is a nanobot. It has always been a nanobot. It has been transmitting your biometrics, your location, your proximity to the colony, for your entire adult life.
+
+Your mother didn't give them to you.
+
+Someone else did. Someone who knew.
+
+You turn around.
+
+The clown is standing at the edge of the cordon. His painted smile, for the first time, is not a mask over something unreadable. It is a mask over grief — plain, specific, a father's grief, or a maker's, or something in between.
+
+He mouths two words.
+
+<em>I'm sorry.</em>
+
+Then the cordon closes and the hazmat team is around you and he is gone, and you are standing in Busan Station with a photograph in your hand and the quiet hum of a thousand sleeping bees in your blood, and the whole story you thought you were living has just become a different story entirely.
+
+<span class="ending-title">Ending Four: The Queen</span>
+<span class="ending-epilogue">You were never a bystander. You were never a witness. You were the experiment. The train was not an accident. The only thing no one planned for was the Jester — and what he chose to do about it. Some questions don't have Busan as an answer. They have a yellow suitcase and an address and a choice you haven't made yet.</span>`,
+  choices: s => [["Play again", "Start"]]
+}
+
+};
+
+// ─── Engine ───────────────────────────────────────────────────────────────────
+const TOTAL = Object.keys(P).length;
+
+function restart() {
+  S = {};
+  visits = {};
+  goTo("Start");
+}
+
+function goTo(name) {
+  const p = P[name];
+  if (!p) { console.error("Missing:", name); return; }
+
+  // Run onEnter before rendering (but after visit count)
+  if (p.onEnter) p.onEnter(S);
+  visits[name] = (visits[name] || 0) + 1;
+
+  // Location
+  document.getElementById("location-bar").textContent = p.loc || "";
+
+  // Render text — split on double newlines into paragraphs
+  const passageEl = document.getElementById("passage");
+  passageEl.innerHTML = "";
+  // Re-trigger animation
+  passageEl.style.animation = "none";
+  passageEl.offsetHeight;
+  passageEl.style.animation = "";
+
+  const raw = p.text(S);
+  raw.split(/\n\n+/).forEach(para => {
+    const el = document.createElement("p");
+    el.innerHTML = para.trim();
+    passageEl.appendChild(el);
+  });
+
+  // Choices
+  const choicesEl = document.getElementById("choices");
+  choicesEl.innerHTML = "";
+  const ch = p.choices(S);
+  ch.forEach(([label, target]) => {
+    const btn = document.createElement("button");
+    btn.className = "choice";
+    btn.textContent = "▸  " + label;
+    btn.onclick = () => goTo(target);
+    choicesEl.appendChild(btn);
+  });
+
+  // Progress
+  const pct = Math.min(100, Math.round(Object.keys(visits).length / TOTAL * 100));
+  document.getElementById("progress-bar").style.width = pct + "%";
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+restart();
+</script>
+</body>
+</html>
