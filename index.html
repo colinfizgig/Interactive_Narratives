@@ -236,7 +236,7 @@
         ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
       }
 
-      seg(TL, BR, 0.45); seg(BL, TR, 0.45);
+      seg(TL, BR, 0.22); seg(BL, TR, 0.22);
 
       function reciprocal(corner, dA, dB) {
         var dx = dB.x - dA.x, dy = dB.y - dA.y;
@@ -245,7 +245,7 @@
         var topHit = meet(corner, far, TL, TR);
         var botHit = meet(corner, far, BL, BR);
         var end = (corner.y === 0) ? botHit : topHit;
-        if (end) { end.x = Math.max(0, Math.min(w, end.x)); seg(corner, end, 0.34); }
+        if (end) { end.x = Math.max(0, Math.min(w, end.x)); seg(corner, end, 0.17); }
         return { a: corner, b: far };
       }
       var r1 = reciprocal(TL, BL, TR);
@@ -259,12 +259,12 @@
       ].filter(Boolean);
 
       eyes.forEach(function (e) {
-        seg({ x: e.x, y: 0 }, { x: e.x, y: h }, 0.2);
-        seg({ x: 0, y: e.y }, { x: w, y: e.y }, 0.2);
-        ctx.strokeStyle = "rgba(" + gold + ",0.85)";
+        seg({ x: e.x, y: 0 }, { x: e.x, y: h }, 0.1);
+        seg({ x: 0, y: e.y }, { x: w, y: e.y }, 0.1);
+        ctx.strokeStyle = "rgba(158, 155, 148, 0.4)";
         ctx.lineWidth = 1.2;
         ctx.beginPath(); ctx.arc(e.x, e.y, 4.5, 0, Math.PI * 2); ctx.stroke();
-        ctx.fillStyle = "rgba(" + gold + ",0.9)";
+        ctx.fillStyle = "rgba(158, 155, 148, 0.45)";
         ctx.beginPath(); ctx.arc(e.x, e.y, 1.4, 0, Math.PI * 2); ctx.fill();
       });
 
