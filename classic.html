@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interactive Narratives</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #0d1014;
+    --bg-raise: #151a21;
+    --bg-raise-2: #1a2029;
+    --ink: #eae4d8;
+    --ink-dim: #a29a8c;
+    --gold: #d9a441;
+    --gold-bright: #eec06a;
+    --line: #2a3038;
+    --display: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --body: "Archivo", "Segoe UI", Arial, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.55;
+    margin: 0;
+    padding-block: 0 64px;
+    padding-inline: clamp(16px, 5vw, 48px);
+  }
+  a { color: inherit; }
+  .frame { max-width: 980px; margin: 0 auto; position: relative; z-index: 1; }
+
+  .hero {
+    position: relative;
+    padding-block: clamp(48px, 10vh, 96px) clamp(36px, 7vh, 64px);
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+  }
+  #gridCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0; }
+  .hero-inner { position: relative; }
+  .hero .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 16px;
+  }
+  .hero .kicker a { color: inherit; text-decoration: none; }
+  .hero .kicker a:hover { color: var(--gold-bright); }
+  .hero h1 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(44px, 7.5vw, 84px);
+    line-height: 0.98;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+  .hero h1 em { color: var(--gold); font-style: italic; }
+  .hero .lede { max-width: 36em; color: var(--ink); font-size: clamp(16px, 2.1vw, 18px); margin: 0; }
+
+  .section { padding-block: 40px 8px; }
+  .section-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 20px; }
+  .section-head h2 { font-family: var(--display); font-weight: 400; font-size: 28px; margin: 0; white-space: nowrap; }
+  .section-head .rule { flex: 1; height: 1px; background: var(--line); position: relative; }
+  .section-head .rule::after {
+    content: ""; position: absolute; right: 0; top: -2.5px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--gold); opacity: 0.7;
+  }
+  .section-head .note {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-dim); white-space: nowrap;
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .card {
+    display: flex; flex-direction: column; gap: 10px;
+    background: var(--bg-raise); border: 1px solid var(--line);
+    padding: 20px 20px 18px; text-decoration: none;
+    transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  }
+  a.card:hover, a.card:focus-visible {
+    border-color: var(--gold); background: var(--bg-raise-2); transform: translateY(-2px);
+  }
+  a.card:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .card .tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .card h3 { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.1; margin: 0; text-wrap: balance; }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-dim); flex: 1; }
+  .card .go { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); letter-spacing: 0.06em; transition: color 0.18s ease; }
+  a.card:hover .go { color: var(--gold-bright); }
+  .card.pending { opacity: 0.75; }
+  .card.pending .go { color: var(--gold); opacity: 0.8; }
+
+  footer {
+    margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-dim); letter-spacing: 0.04em;
+  }
+  footer .grid-note { color: var(--gold); opacity: 0.85; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card .go { transition: none; }
+    a.card:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="gridCanvas" aria-hidden="true"></canvas>
+<div class="frame">
+
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="kicker">colinfizgig · story experiments</p>
+      <h1>Interactive <em>Narratives</em></h1>
+      <p class="lede">Branching stories by Colin Freeman — from early Twine studies in narrative
+        structure to recent work co-authored through TwineMCP, a Model Context Protocol bridge
+        that gives an AI collaborator a spatial model of the story world.</p>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>New work</h2>
+      <div class="rule"></div>
+      <span class="note">TwineMCP · 2026 · plays in browser</span>
+    </div>
+    <div class="cards">
+
+      <a class="card" href="stories/the_island.html">
+        <span class="tag">Spatial world model · SugarCube</span>
+        <h3>The Island</h3>
+        <p>You fall out of a grey sky toward an island in the Atlantic. Second edition — every
+          passage is anchored to a mapped location, so the island stays a real place as the
+          story branches.</p>
+        <span class="go">play →</span>
+      </a>
+
+      <a class="card" href="stories/whispering-on-a-train.html">
+        <span class="tag">Thriller · SugarCube</span>
+        <h3>Whispering on a Train</h3>
+        <p>Yuna Seo, twenty-six, almost-idol, boards the 8:15 KTX out of Seoul for the callback
+          of her life. Something else boards with her — and it spreads car by car.</p>
+        <span class="go">play →</span>
+      </a>
+
+      <a class="card" href="stories/the_lost_city.html">
+        <span class="tag">Live AI NPC · WebLLM</span>
+        <h3>The Lost City</h3>
+        <p>A survival adventure in a ruined temple city — torchlight, a predator in the dark,
+          and an ancient scholar played live by a language model running in your browser.
+          Chatting with him downloads the model once (~700&nbsp;MB, Chrome/Edge desktop).</p>
+        <span class="go">play →</span>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>Early experiments</h2>
+      <div class="rule"></div>
+      <span class="note">Georgia Tech · 2019 · narrative structure studies</span>
+    </div>
+    <div class="cards">
+
+      <a class="card" href="https://colinfizgig.github.io/Interactive_Narratives/Plot_Substitution_Story/ColinFreeman_OfMiceAndMen.html">
+        <span class="tag">Plot substitution</span>
+        <h3>Of Mice and Men</h3>
+        <p>What survives of a story when its plot is swapped out from under it.</p>
+        <span class="go">play →</span>
+      </a>
+
+      <a class="card" href="https://colinfizgig.github.io/Interactive_Narratives/Spatial_Story/Where%20the%20hell%20am%20I.html">
+        <span class="tag">Spatial story</span>
+        <h3>Where the hell am I?</h3>
+        <p>A narrative navigated as a place — location, not chronology, drives the telling.</p>
+        <span class="go">play →</span>
+      </a>
+
+      <a class="card" href="https://colinfizgig.github.io/Interactive_Narratives/temporal_story/The_Last_Day.html">
+        <span class="tag">Temporal story</span>
+        <h3>The Last Day</h3>
+        <p>One day, told against the clock — time as the branching axis.</p>
+        <span class="go">play →</span>
+      </a>
+
+      <a class="card" href="https://colinfizgig.github.io/Interactive_Narratives/The_last_case_for_Deckard/ColinFreeman_The%20Last%20Case%20for%20Deckard.html">
+        <span class="tag">Noir · character study</span>
+        <h3>The Last Case for Deckard</h3>
+        <p>A detective's final case, told in the spaces between what he'll admit.</p>
+        <span class="go">play →</span>
+      </a>
+
+    </div>
+  </section>
+
+  <footer>
+    <span>© Colin Freeman · colinfizgig</span>
+    <span class="grid-note" id="ratioNote">armature: drawn from this frame</span>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var canvas = document.getElementById("gridCanvas");
+    var ctx = canvas.getContext("2d");
+    var note = document.getElementById("ratioNote");
+
+    function meet(a, b, c, d) {
+      var den = (a.x - b.x) * (c.y - d.y) - (a.y - b.y) * (c.x - d.x);
+      if (Math.abs(den) < 1e-9) return null;
+      var t = ((a.x - c.x) * (c.y - d.y) - (a.y - c.y) * (c.x - d.x)) / den;
+      return { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
+    }
+
+    function draw() {
+      var w = window.innerWidth, h = window.innerHeight;
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      var gold = "217, 164, 65";
+      var TL = { x: 0, y: 0 }, TR = { x: w, y: 0 }, BL = { x: 0, y: h }, BR = { x: w, y: h };
+
+      function seg(p, q, alpha, width) {
+        ctx.strokeStyle = "rgba(" + gold + "," + alpha + ")";
+        ctx.lineWidth = width || 1;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+      }
+
+      seg(TL, BR, 0.22); seg(BL, TR, 0.22);
+
+      function reciprocal(corner, dA, dB) {
+        var dx = dB.x - dA.x, dy = dB.y - dA.y;
+        var px = -dy, py = dx;
+        var far = { x: corner.x + px, y: corner.y + py };
+        var topHit = meet(corner, far, TL, TR);
+        var botHit = meet(corner, far, BL, BR);
+        var end = (corner.y === 0) ? botHit : topHit;
+        if (end) { end.x = Math.max(0, Math.min(w, end.x)); seg(corner, end, 0.17); }
+        return { a: corner, b: far };
+      }
+      var r1 = reciprocal(TL, BL, TR);
+      var r2 = reciprocal(BR, BL, TR);
+      var r3 = reciprocal(TR, TL, BR);
+      var r4 = reciprocal(BL, TL, BR);
+
+      var eyes = [
+        meet(r1.a, r1.b, BL, TR), meet(r2.a, r2.b, BL, TR),
+        meet(r3.a, r3.b, TL, BR), meet(r4.a, r4.b, TL, BR)
+      ].filter(Boolean);
+
+      eyes.forEach(function (e) {
+        seg({ x: e.x, y: 0 }, { x: e.x, y: h }, 0.1);
+        seg({ x: 0, y: e.y }, { x: w, y: e.y }, 0.1);
+        ctx.strokeStyle = "rgba(158, 155, 148, 0.4)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.arc(e.x, e.y, 4.5, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = "rgba(158, 155, 148, 0.45)";
+        ctx.beginPath(); ctx.arc(e.x, e.y, 1.4, 0, Math.PI * 2); ctx.fill();
+      });
+
+      if (note) {
+        var ratio = (w / h).toFixed(2);
+        note.textContent = "armature: dynamic symmetry, drawn live at " + ratio + ":1";
+      }
+    }
+
+    draw();
+    var t;
+    window.addEventListener("resize", function () { clearTimeout(t); t = setTimeout(draw, 120); });
+  })();
+</script>
+</body>
+</html>
